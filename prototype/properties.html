@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Properties - SaudiProp</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body x-data="propertiesPage()" :class="{ 'rtl': currentLang === 'ar' }" :dir="currentLang === 'ar' ? 'rtl' : 'ltr'"
+    class="font-sans bg-gray-50 text-gray-900">
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center gap-2">
+                    <a href="index.html" class="flex items-center gap-2">
+                        <div
+                            class="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-xl flex items-center justify-center">
+                            <span class="text-white font-bold text-lg">S</span>
+                        </div>
+                        <span class="text-xl font-bold text-gray-900">Saudi<span
+                                class="text-emerald-600">Prop</span></span>
+                    </a>
+                </div>
+
+                <nav class="hidden md:flex items-center gap-8">
+                    <a href="index.html" class="text-gray-600 hover:text-emerald-600 font-medium transition-colors"
+                        x-text="t('nav.home')"></a>
+                    <a href="properties.html" class="text-emerald-600 font-medium" x-text="t('nav.properties')"></a>
+                    <a href="#" class="text-gray-600 hover:text-emerald-600 font-medium transition-colors"
+                        x-text="t('nav.agents')"></a>
+                    <a href="#" class="text-gray-600 hover:text-emerald-600 font-medium transition-colors"
+                        x-text="t('nav.about')"></a>
+                </nav>
+
+                <div class="flex items-center gap-4">
+                    <div class="relative" x-data="{ open: false }">
+                        <button @click="open = !open"
+                            class="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors">
+                            <span class="text-lg" x-text="langFlags[currentLang]"></span>
+                            <span class="text-sm font-medium uppercase" x-text="currentLang"></span>
+                        </button>
+                        <div x-show="open" @click.away="open = false"
+                            class="absolute end-0 mt-2 w-40 bg-white rounded-xl shadow-lg border overflow-hidden z-50">
+                            <button @click="setLang('en'); open = false"
+                                class="w-full px-4 py-3 text-start hover:bg-gray-50 flex items-center gap-3">🇬🇧
+                                English</button>
+                            <button @click="setLang('ar'); open = false"
+                                class="w-full px-4 py-3 text-start hover:bg-gray-50 flex items-center gap-3">🇸🇦
+                                العربية</button>
+                            <button @click="setLang('id'); open = false"
+                                class="w-full px-4 py-3 text-start hover:bg-gray-50 flex items-center gap-3">🇮🇩
+                                Indonesia</button>
+                        </div>
+                    </div>
+                    <a href="login.html"
+                        class="hidden sm:inline-flex px-5 py-2.5 bg-emerald-600 text-white font-medium rounded-xl hover:bg-emerald-700 transition-colors"
+                        x-text="t('nav.login')"></a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Page Header -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+            <div>
+                <h1 class="text-3xl font-bold" x-text="t('properties.title')">Properties</h1>
+                <p class="text-gray-600 mt-1">
+                    <span x-text="filteredProperties.length"></span> <span x-text="t('properties.found')"></span>
+                </p>
+            </div>
+            <div class="flex items-center gap-4">
+                <!-- View Toggle -->
+                <div class="flex bg-gray-100 rounded-lg p-1">
+                    <button @click="viewMode = 'grid'" :class="viewMode === 'grid' ? 'bg-white shadow' : ''"
+                        class="p-2 rounded-lg transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                        </svg>
+                    </button>
+                    <button @click="viewMode = 'list'" :class="viewMode === 'list' ? 'bg-white shadow' : ''"
+                        class="p-2 rounded-lg transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                        </svg>
+                    </button>
+                </div>
+                <!-- Sort -->
+                <select x-model="sortBy"
+                    class="px-4 py-2 bg-white border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
+                    <option value="newest" x-text="t('properties.newest')"></option>
+                    <option value="priceHigh" x-text="t('properties.priceHigh')"></option>
+                    <option value="priceLow" x-text="t('properties.priceLow')"></option>
+                </select>
+            </div>
+        </div>
+
+        <div class="flex gap-8">
+            <!-- Filters Sidebar -->
+            <aside class="w-72 flex-shrink-0 hidden lg:block">
+                <div class="bg-white rounded-2xl shadow-lg p-6 sticky top-24">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-lg font-bold" x-text="t('properties.filters')">Filters</h2>
+                        <button @click="resetFilters()" class="text-sm text-emerald-600 hover:underline"
+                            x-text="t('properties.reset')">Reset</button>
+                    </div>
+
+                    <!-- Purpose -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2"
+                            x-text="t('search.purpose')">Purpose</label>
+                        <div class="flex gap-2">
+                            <button @click="filters.purpose = 'rent'"
+                                :class="filters.purpose === 'rent' ? 'bg-emerald-600 text-white' : 'bg-gray-100'"
+                                class="flex-1 py-2 rounded-lg font-medium transition-colors"
+                                x-text="t('purpose.rent')">For Rent</button>
+                            <button @click="filters.purpose = 'sale'"
+                                :class="filters.purpose === 'sale' ? 'bg-emerald-600 text-white' : 'bg-gray-100'"
+                                class="flex-1 py-2 rounded-lg font-medium transition-colors"
+                                x-text="t('purpose.sale')">For Sale</button>
+                        </div>
+                    </div>
+
+                    <!-- Property Type -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2" x-text="t('search.type')">Property
+                            Type</label>
+                        <select x-model="filters.type"
+                            class="w-full px-4 py-3 bg-gray-100 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none">
+                            <option value="">All Types</option>
+                            <option value="villa" x-text="t('types.villa')">Villa</option>
+                            <option value="apartment" x-text="t('types.apartment')">Apartment</option>
+                            <option value="compound" x-text="t('types.compound')">Compound</option>
+                            <option value="land" x-text="t('types.land')">Land</option>
+                        </select>
+                    </div>
+
+                    <!-- Price Range -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Price Range (SAR)</label>
+                        <div class="flex gap-2">
+                            <input x-model="filters.minPrice" type="number" placeholder="Min"
+                                class="w-full px-4 py-3 bg-gray-100 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none">
+                            <input x-model="filters.maxPrice" type="number" placeholder="Max"
+                                class="w-full px-4 py-3 bg-gray-100 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none">
+                        </div>
+                    </div>
+
+                    <!-- Bedrooms -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2"
+                            x-text="t('search.bedrooms')">Bedrooms</label>
+                        <div class="flex gap-2">
+                            <template x-for="n in [1,2,3,4,5]">
+                                <button @click="filters.beds = filters.beds === n ? '' : n"
+                                    :class="filters.beds === n ? 'bg-emerald-600 text-white' : 'bg-gray-100'"
+                                    class="w-10 h-10 rounded-lg font-medium transition-colors"
+                                    x-text="n + (n === 5 ? '+' : '')"></button>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Features -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2"
+                            x-text="t('detail.features')">Features</label>
+                        <div class="space-y-2">
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" class="custom-checkbox">
+                                <span x-text="t('features.pool')">Swimming Pool</span>
+                            </label>
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" class="custom-checkbox">
+                                <span x-text="t('features.garden')">Garden</span>
+                            </label>
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" class="custom-checkbox">
+                                <span x-text="t('features.majlis')">Majlis Room</span>
+                            </label>
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" class="custom-checkbox">
+                                <span x-text="t('features.maidRoom')">Maid Room</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Property Grid -->
+            <div class="flex-1">
+                <!-- Grid View -->
+                <div x-show="viewMode === 'grid'" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    <template x-for="property in filteredProperties" :key="property.id">
+                        <a href="property-detail.html"
+                            class="property-card bg-white rounded-2xl shadow-lg overflow-hidden group hover:shadow-xl transition-all duration-300">
+                            <div class="relative h-56 overflow-hidden">
+                                <img :src="property.image"
+                                    class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                                <div class="absolute top-3 start-3 flex gap-2">
+                                    <span x-show="property.featured"
+                                        class="px-3 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold rounded-full">⭐</span>
+                                    <span class="px-3 py-1 text-white text-xs font-bold rounded-full"
+                                        :class="property.purpose === 'rent' ? 'bg-blue-600' : 'bg-emerald-600'"
+                                        x-text="property.purpose === 'rent' ? t('purpose.rent') : t('purpose.sale')"></span>
+                                </div>
+                                <button
+                                    class="absolute top-3 end-3 w-10 h-10 rounded-full bg-white/80 backdrop-blur flex items-center justify-center hover:bg-white transition-colors">
+                                    <svg class="w-5 h-5 text-gray-600 hover:text-red-500" fill="none"
+                                        stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <div class="p-5">
+                                <h3 class="font-bold text-lg text-gray-900 line-clamp-1 mb-2" x-text="property.title">
+                                </h3>
+                                <p class="text-gray-500 text-sm flex items-center gap-1 mb-3">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                    </svg>
+                                    <span x-text="property.location"></span>
+                                </p>
+                                <div class="flex items-center gap-4 text-sm text-gray-600 mb-4"
+                                    x-show="property.beds > 0">
+                                    <span>🛏️ <span x-text="property.beds"></span></span>
+                                    <span>🚿 <span x-text="property.baths"></span></span>
+                                    <span>📐 <span x-text="property.area"></span>m²</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <p class="text-xl font-bold text-emerald-600">
+                                        <span x-text="property.price.toLocaleString()"></span>
+                                        <span class="text-sm font-normal text-gray-500"
+                                            x-text="'SAR' + (property.purpose === 'rent' ? '/' + t('price.year') : '')"></span>
+                                    </p>
+                                </div>
+                            </div>
+                        </a>
+                    </template>
+                </div>
+
+                <!-- List View -->
+                <div x-show="viewMode === 'list'" class="space-y-4">
+                    <template x-for="property in filteredProperties" :key="property.id">
+                        <a href="property-detail.html"
+                            class="bg-white rounded-2xl shadow-lg overflow-hidden flex hover:shadow-xl transition-all">
+                            <div class="w-72 h-48 flex-shrink-0">
+                                <img :src="property.image" class="w-full h-full object-cover">
+                            </div>
+                            <div class="flex-1 p-6 flex flex-col justify-between">
+                                <div>
+                                    <div class="flex items-start justify-between">
+                                        <h3 class="font-bold text-xl text-gray-900" x-text="property.title"></h3>
+                                        <span class="px-3 py-1 text-white text-xs font-bold rounded-full"
+                                            :class="property.purpose === 'rent' ? 'bg-blue-600' : 'bg-emerald-600'"
+                                            x-text="property.purpose === 'rent' ? t('purpose.rent') : t('purpose.sale')"></span>
+                                    </div>
+                                    <p class="text-gray-500 mt-1 flex items-center gap-1">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                        </svg>
+                                        <span x-text="property.location"></span>
+                                    </p>
+                                </div>
+                                <div class="flex items-center justify-between mt-4">
+                                    <div class="flex items-center gap-6 text-gray-600" x-show="property.beds > 0">
+                                        <span>🛏️ <span x-text="property.beds"></span> <span
+                                                x-text="t('card.beds')"></span></span>
+                                        <span>🚿 <span x-text="property.baths"></span> <span
+                                                x-text="t('card.baths')"></span></span>
+                                        <span>📐 <span x-text="property.area"></span>m²</span>
+                                    </div>
+                                    <p class="text-2xl font-bold text-emerald-600">
+                                        <span x-text="property.price.toLocaleString()"></span>
+                                        <span class="text-sm font-normal text-gray-500">SAR</span>
+                                    </p>
+                                </div>
+                            </div>
+                        </a>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white py-8 mt-16">
+        <div class="max-w-7xl mx-auto px-4 text-center text-gray-500">
+            <p>© 2026 SaudiProp. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="js/translations.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>
