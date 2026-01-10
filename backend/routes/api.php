@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CityController;
 use App\Http\Controllers\Api\PropertyController;
 use App\Http\Controllers\Api\FavoriteController;
+use App\Http\Controllers\Api\LeadController;
 
 /*
 |--------------------------------------------------------------------------
@@ -32,24 +33,37 @@ Route::get('/cities/{city}/districts', [CityController::class, 'districts']);
 // Properties (public - browsing)
 Route::get('/properties', [PropertyController::class, 'index']);
 Route::get('/properties/featured', [PropertyController::class, 'featured']);
+Route::get('/properties/map', [PropertyController::class, 'mapSearch']);
 Route::get('/properties/{property}', [PropertyController::class, 'show']);
+
+// Leads (public - for inquiries)
+Route::post('/leads', [LeadController::class, 'store']);
 
 // Protected routes (require authentication)
 Route::middleware('auth:sanctum')->group(function () {
     // Auth
     Route::get('/user', [AuthController::class, 'user']);
     Route::post('/auth/register', [AuthController::class, 'register']);
+    Route::post('/auth/register-agent', [AuthController::class, 'registerAgent']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);
-    
+
     // Properties (CRUD for agents)
     Route::post('/properties', [PropertyController::class, 'store']);
     Route::put('/properties/{property}', [PropertyController::class, 'update']);
     Route::delete('/properties/{property}', [PropertyController::class, 'destroy']);
     Route::get('/user/properties', [PropertyController::class, 'myProperties']);
-    
+
     // Favorites
     Route::get('/favorites', [FavoriteController::class, 'index']);
     Route::post('/favorites/{property}', [FavoriteController::class, 'store']);
     Route::delete('/favorites/{property}', [FavoriteController::class, 'destroy']);
     Route::get('/favorites/{property}/check', [FavoriteController::class, 'check']);
+
+    // Leads (for agents)
+    Route::get('/leads', [LeadController::class, 'index']);
+    Route::get('/leads/stats', [LeadController::class, 'stats']);
+    Route::get('/leads/{lead}', [LeadController::class, 'show']);
+    Route::put('/leads/{lead}', [LeadController::class, 'update']);
+    Route::delete('/leads/{lead}', [LeadController::class, 'destroy']);
 });
+

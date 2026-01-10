@@ -25,6 +25,8 @@ class Property extends Model
         'bathrooms',
         'latitude',
         'longitude',
+        'virtual_tour_url',
+        'virtual_tour_type',
         'features',
         'rega_ad_license',
         'status',
@@ -70,6 +72,14 @@ class Property extends Model
     }
 
     /**
+     * Leads/inquiries for this property
+     */
+    public function leads(): HasMany
+    {
+        return $this->hasMany(Lead::class);
+    }
+
+    /**
      * Get title based on locale
      */
     public function getTitleAttribute(): string
@@ -85,6 +95,14 @@ class Property extends Model
     {
         $locale = app()->getLocale();
         return $locale === 'ar' ? $this->description_ar : $this->description_en;
+    }
+
+    /**
+     * Check if property has virtual tour
+     */
+    public function hasVirtualTour(): bool
+    {
+        return !empty($this->virtual_tour_url);
     }
 
     /**
@@ -127,4 +145,36 @@ class Property extends Model
         }
         return $query;
     }
+
+    /**
+     * Scope for map bounding box search
+     */
+    public function scopeInBoundingBox($query, $minLat, $maxLat, $minLng, $maxLng)
+    {
+        return $query->whereBetween('latitude', [$minLat, $maxLat])
+            ->whereBetween('longitude', [$minLng, $maxLng]);
+    }
+
+    /**
+     * Scope for price range filter
+     */
+    public function scopePriceRange($query, $minPrice = null, $maxPrice = null)
+    {
+        if ($minPrice !== null) {
+            $query->where('price', '>=', $minPrice);
+        }
+        if ($maxPrice !== null) {
+            $query->where('price', '<=', $maxPrice);
+        }
+        return $query;
+    }
+
+    /**
+     * Scope for properties with virtual tour
+     */
+    public function scopeWithVirtualTour($query)
+    {
+        return $query->whereNotNull('virtual_tour_url');
+    }
 }
+

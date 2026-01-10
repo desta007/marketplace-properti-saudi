@@ -20,10 +20,16 @@ class User extends Authenticatable
         'name',
         'email',
         'phone',
+        'whatsapp_number',
         'password',
         'role',
         'language',
         'avatar',
+        'rega_license_number',
+        'rega_license_document',
+        'agent_status',
+        'agent_rejection_reason',
+        'agent_verified_at',
     ];
 
     /**
@@ -41,6 +47,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'agent_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
@@ -62,6 +69,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Leads received by agent
+     */
+    public function leads(): HasMany
+    {
+        return $this->hasMany(Lead::class, 'agent_id');
+    }
+
+    /**
      * Check if user is an agent
      */
     public function isAgent(): bool
@@ -75,5 +90,64 @@ class User extends Authenticatable
     public function isAdmin(): bool
     {
         return $this->role === 'admin';
+    }
+
+    /**
+     * Check if agent is verified
+     */
+    public function isVerifiedAgent(): bool
+    {
+        return $this->isAgent() && $this->agent_status === 'verified';
+    }
+
+    /**
+     * Check if agent status is pending
+     */
+    public function isPendingAgent(): bool
+    {
+        return $this->isAgent() && $this->agent_status === 'pending';
+    }
+
+    /**
+     * Get WhatsApp click-to-chat URL
+     */
+    public function getWhatsappUrlAttribute(): ?string
+    {
+        $number = $this->whatsapp_number ?: $this->phone;
+        if (!$number) {
+            return null;
+        }
+        // Remove non-numeric characters
+        $number = preg_replace('/[^0-9]/', '', $number);
+        return "https://wa.me/{$number}";
+    }
+
+    /**
+     * Validate REGA license format
+     * Format: 10-digit number (simplified validation)
+     */
+    public static function validateRegaLicenseFormat(?string $license): bool
+    {
+        if (!$license) {
+            return false;
+        }
+        // REGA license should be alphanumeric, 10-20 characters
+        return preg_match('/^[A-Z0-9]{10,20}$/i', $license) === 1;
+    }
+
+    /**
+     * Scope for verified agents
+     */
+    public function scopeVerifiedAgents($query)
+    {
+        return $query->where('role', 'agent')->where('agent_status', 'verified');
+    }
+
+    /**
+     * Scope for pending agents
+     */
+    public function scopePendingAgents($query)
+    {
+        return $query->where('role', 'agent')->where('agent_status', 'pending');
     }
 }

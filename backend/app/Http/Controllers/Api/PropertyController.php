@@ -22,12 +22,7 @@ class PropertyController extends Controller
             ->inCity($request->city_id);
 
         // Price range filter
-        if ($request->min_price) {
-            $query->where('price', '>=', $request->min_price);
-        }
-        if ($request->max_price) {
-            $query->where('price', '<=', $request->max_price);
-        }
+        $query->priceRange($request->min_price, $request->max_price);
 
         // Bedrooms filter
         if ($request->bedrooms) {
@@ -37,6 +32,11 @@ class PropertyController extends Controller
         // District filter
         if ($request->district_id) {
             $query->where('district_id', $request->district_id);
+        }
+
+        // Virtual tour filter
+        if ($request->boolean('has_virtual_tour')) {
+            $query->withVirtualTour();
         }
 
         // Sort
@@ -55,6 +55,36 @@ class PropertyController extends Controller
         }
 
         $properties = $query->paginate($request->get('per_page', 15));
+
+        return PropertyResource::collection($properties);
+    }
+
+    /**
+     * Map-based property search (bounding box)
+     */
+    public function mapSearch(Request $request)
+    {
+        $request->validate([
+            'min_lat' => 'required|numeric',
+            'max_lat' => 'required|numeric',
+            'min_lng' => 'required|numeric',
+            'max_lng' => 'required|numeric',
+        ]);
+
+        $query = Property::with(['city', 'images'])
+            ->active()
+            ->inBoundingBox(
+                $request->min_lat,
+                $request->max_lat,
+                $request->min_lng,
+                $request->max_lng
+            )
+            ->purpose($request->purpose)
+            ->type($request->type)
+            ->priceRange($request->min_price, $request->max_price);
+
+        // Limit for map view
+        $properties = $query->limit(100)->get();
 
         return PropertyResource::collection($properties);
     }
@@ -79,13 +109,15 @@ class PropertyController extends Controller
     public function show(Property $property)
     {
         // Only show active properties or owner's properties
-        if ($property->status !== 'active' && 
-            (!auth()->check() || auth()->id() !== $property->user_id)) {
+        if (
+            $property->status !== 'active' &&
+            (!auth()->check() || auth()->id() !== $property->user_id)
+        ) {
             abort(404);
         }
 
         $property->load(['city', 'district', 'images', 'user']);
-        
+
         // Increment view count
         $property->increment('view_count');
 
@@ -112,6 +144,8 @@ class PropertyController extends Controller
             'bathrooms' => 'nullable|integer|min:0|max:20',
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
+            'virtual_tour_url' => 'nullable|url|max:500',
+            'virtual_tour_type' => 'nullable|in:matterport,youtube_360,custom',
             'features' => 'nullable|array',
             'rega_ad_license' => 'nullable|string|max:50',
             'images' => 'nullable|array',
@@ -119,7 +153,7 @@ class PropertyController extends Controller
         ]);
 
         $user = $request->user();
-        
+
         // Only agents can post properties
         if (!$user->isAgent() && !$user->isAdmin()) {
             return response()->json([
@@ -143,6 +177,8 @@ class PropertyController extends Controller
             'bathrooms' => $request->bathrooms,
             'latitude' => $request->latitude,
             'longitude' => $request->longitude,
+            'virtual_tour_url' => $request->virtual_tour_url,
+            'virtual_tour_type' => $request->virtual_tour_type,
             'features' => $request->features,
             'rega_ad_license' => $request->rega_ad_license,
             'status' => 'pending', // Requires admin approval
@@ -198,10 +234,22 @@ class PropertyController extends Controller
         ]);
 
         $property->update($request->only([
-            'title_en', 'title_ar', 'description_en', 'description_ar',
-            'city_id', 'district_id', 'type', 'purpose', 'price',
-            'area_sqm', 'bedrooms', 'bathrooms', 'latitude', 'longitude',
-            'features', 'rega_ad_license',
+            'title_en',
+            'title_ar',
+            'description_en',
+            'description_ar',
+            'city_id',
+            'district_id',
+            'type',
+            'purpose',
+            'price',
+            'area_sqm',
+            'bedrooms',
+            'bathrooms',
+            'latitude',
+            'longitude',
+            'features',
+            'rega_ad_license',
         ]));
 
         $property->load(['city', 'district', 'images']);

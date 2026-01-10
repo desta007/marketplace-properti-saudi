@@ -3,12 +3,12 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
-use App\Models\OtpCode;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
 {
@@ -21,81 +21,72 @@ class AuthController extends Controller
     }
 
     /**
-     * Send OTP to email
+     * Show registration form
      */
-    public function sendOtp(Request $request)
+    public function showRegister()
     {
-        $request->validate([
-            'email' => 'required|email',
-        ]);
-
-        $email = $request->email;
-        $code = OtpCode::generateCode();
-
-        // Delete old unused OTPs
-        OtpCode::where('email', $email)
-            ->whereNull('verified_at')
-            ->delete();
-
-        // Create new OTP
-        OtpCode::create([
-            'email' => $email,
-            'code' => $code,
-            'expires_at' => Carbon::now()->addMinutes(10),
-        ]);
-
-        // Send email
-        try {
-            Mail::raw("Your SaudiProp verification code is: {$code}", function ($message) use ($email) {
-                $message->to($email)->subject('SaudiProp - Verification Code');
-            });
-        } catch (\Exception $e) {
-            \Log::warning('Failed to send OTP email: ' . $e->getMessage());
-        }
-
-        return back()->with([
-            'otp_sent' => true,
-            'email' => $email,
-            'message' => 'Verification code sent to your email',
-        ]);
+        return view('web.auth.register');
     }
 
     /**
-     * Verify OTP and login
+     * Handle login submission
      */
-    public function verify(Request $request)
+    public function login(Request $request)
     {
         $request->validate([
-            'email' => 'required|email',
-            'code' => 'required|string|size:6',
+            'email' => 'required|email|max:255',
+            'password' => 'required|string|min:6',
         ]);
 
-        $otp = OtpCode::where('email', $request->email)
-            ->where('code', $request->code)
-            ->whereNull('verified_at')
-            ->first();
+        $email = strtolower(trim($request->email));
+        $remember = $request->boolean('remember');
 
-        if (!$otp || $otp->isExpired()) {
-            return back()->withErrors(['code' => 'Invalid or expired verification code']);
+        // Attempt to authenticate
+        if (Auth::attempt(['email' => $email, 'password' => $request->password], $remember)) {
+            $request->session()->regenerate();
+
+            return redirect()->intended('/')
+                ->with('success', 'Welcome back, ' . Auth::user()->name . '!');
         }
 
-        // Mark OTP as verified
-        $otp->markAsVerified();
+        return back()->withErrors([
+            'email' => 'The provided credentials do not match our records.',
+        ])->withInput($request->only('email', 'remember'));
+    }
 
-        // Find or create user
-        $user = User::firstOrCreate(
-            ['email' => $request->email],
-            [
-                'name' => explode('@', $request->email)[0],
-                'email_verified_at' => Carbon::now(),
-                'language' => app()->getLocale(),
-            ]
-        );
+    /**
+     * Handle registration submission
+     */
+    public function register(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|min:2|max:255',
+            'email' => 'required|email|max:255|unique:users,email',
+            'phone' => 'required|string|min:10|max:20',
+            'password' => ['required', 'confirmed', Password::min(8)],
+        ]);
 
-        // Login user
+        $email = strtolower(trim($request->email));
+        $name = trim($request->name);
+        $phone = trim($request->phone);
+
+        // Create new user
+        $user = User::create([
+            'name' => $name,
+            'email' => $email,
+            'phone' => $phone,
+            'whatsapp_number' => $phone,
+            'password' => Hash::make($request->password),
+            'email_verified_at' => Carbon::now(),
+            'language' => app()->getLocale(),
+            'role' => 'user',
+        ]);
+
+        // Login the user
         Auth::login($user, true);
 
-        return redirect()->intended('/')->with('success', 'Welcome back!');
+        return redirect()->intended('/')
+            ->with('success', 'Welcome to SaudiProp, ' . $user->name . '!');
     }
 
     /**
@@ -107,6 +98,6 @@ class AuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect('/');
+        return redirect('/')->with('success', 'You have been logged out.');
     }
 }
