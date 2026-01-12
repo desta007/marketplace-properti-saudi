@@ -213,26 +213,28 @@ class Property extends Model
 
     /**
      * Scope to order by boost priority (featured first)
+     * Uses subquery to avoid MySQL strict mode GROUP BY issues
      */
     public function scopeOrderByBoostPriority($query)
     {
-        return $query->leftJoin('property_boosts', function ($join) {
-            $join->on('properties.id', '=', 'property_boosts.property_id')
-                ->where('property_boosts.is_active', true)
-                ->where('property_boosts.starts_at', '<=', now())
-                ->where('property_boosts.ends_at', '>=', now());
-        })
-            ->select('properties.*')
-            ->selectRaw("
-                MAX(CASE 
-                    WHEN property_boosts.boost_type = 'premium' THEN 3
-                    WHEN property_boosts.boost_type = 'top_pick' THEN 2
-                    WHEN property_boosts.boost_type = 'featured' THEN 1
-                    ELSE 0
-                END) as boost_priority
-            ")
-            ->groupBy('properties.id')
-            ->orderByDesc('boost_priority');
+        return $query->orderByRaw("
+            COALESCE(
+                (SELECT 
+                    CASE 
+                        WHEN pb.boost_type = 'premium' THEN 3
+                        WHEN pb.boost_type = 'top_pick' THEN 2
+                        WHEN pb.boost_type = 'featured' THEN 1
+                        ELSE 0
+                    END
+                FROM property_boosts pb 
+                WHERE pb.property_id = properties.id 
+                    AND pb.is_active = 1 
+                    AND pb.starts_at <= NOW() 
+                    AND pb.ends_at >= NOW()
+                LIMIT 1
+                ), 0
+            ) DESC
+        ");
     }
 
     /**
