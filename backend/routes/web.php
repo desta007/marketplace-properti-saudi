@@ -7,6 +7,7 @@ use App\Http\Controllers\Web\AuthController;
 use App\Http\Controllers\Web\ProfileController;
 use App\Http\Controllers\Web\AgentController;
 use App\Http\Controllers\Web\AgentsController;
+use App\Http\Controllers\Web\LeadController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\PropertyController as AdminPropertyController;
 use App\Http\Controllers\Admin\AgentController as AdminAgentController;
@@ -19,6 +20,11 @@ use App\Http\Controllers\Admin\AgentController as AdminAgentController;
 
 // Homepage
 Route::get('/', [HomeController::class, 'index'])->name('home');
+
+// About page
+Route::get('/about', function () {
+    return view('web.about');
+})->name('about');
 
 // Properties (public)
 Route::get('/properties', [PropertyController::class, 'index'])->name('properties.index');
@@ -73,6 +79,11 @@ Route::middleware('auth')->group(function () {
         Route::post('/properties', [PropertyController::class, 'store'])->name('properties.store');
         Route::get('/properties/{property}/edit', [PropertyController::class, 'edit'])->name('properties.edit');
         Route::put('/properties/{property}', [PropertyController::class, 'update'])->name('properties.update');
+
+        // Agent leads management
+        Route::get('/my-leads', [LeadController::class, 'index'])->name('leads.index');
+        Route::get('/my-leads/{lead}', [LeadController::class, 'show'])->name('leads.show');
+        Route::put('/my-leads/{lead}/status', [LeadController::class, 'updateStatus'])->name('leads.update-status');
     });
 });
 
@@ -93,5 +104,9 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/agents/{agent}/verify', [AdminAgentController::class, 'verify'])->name('agents.verify');
     Route::post('/agents/{agent}/reject', [AdminAgentController::class, 'reject'])->name('agents.reject');
     Route::post('/agents/{agent}/suspend', [AdminAgentController::class, 'suspend'])->name('agents.suspend');
+
+    // Settings
+    Route::get('/settings', [\App\Http\Controllers\Admin\SettingController::class, 'index'])->name('settings.index');
+    Route::put('/settings', [\App\Http\Controllers\Admin\SettingController::class, 'update'])->name('settings.update');
 });
 

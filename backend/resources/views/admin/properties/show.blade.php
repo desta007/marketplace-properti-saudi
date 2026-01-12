@@ -49,7 +49,8 @@
                     <tr>
                         <td style="padding: 0.5rem 0; color: #6b7280;">Price</td>
                         <td style="padding: 0.5rem 0; font-weight: 600; color: #059669;">
-                            {{ number_format($property->price) }} SAR</td>
+                            {{ number_format($property->price) }} SAR
+                        </td>
                     </tr>
                     <tr>
                         <td style="padding: 0.5rem 0; color: #6b7280;">City</td>
@@ -95,8 +96,53 @@
                             @endif
                         </td>
                     </tr>
+                    <tr>
+                        <td style="padding: 0.5rem 0; color: #6b7280;">Latitude</td>
+                        <td style="padding: 0.5rem 0;">
+                            @if($property->latitude)
+                                <code
+                                    style="background: #f3f4f6; padding: 0.25rem 0.5rem; border-radius: 0.25rem;">{{ $property->latitude }}</code>
+                            @else
+                                <span style="color: #9ca3af;">-</span>
+                            @endif
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 0.5rem 0; color: #6b7280;">Longitude</td>
+                        <td style="padding: 0.5rem 0;">
+                            @if($property->longitude)
+                                <code
+                                    style="background: #f3f4f6; padding: 0.25rem 0.5rem; border-radius: 0.25rem;">{{ $property->longitude }}</code>
+                            @else
+                                <span style="color: #9ca3af;">-</span>
+                            @endif
+                        </td>
+                    </tr>
                 </table>
+
+                {{-- Map Display --}}
+                @if($property->latitude && $property->longitude)
+                    <div style="margin-top: 1rem;">
+                        <h4 style="margin-bottom: 0.5rem; font-size: 0.875rem; color: #6b7280;">📍 Property Location</h4>
+                        <div id="admin-property-map" style="height: 200px; border-radius: 0.5rem; overflow: hidden;"></div>
+                    </div>
+                @endif
             </div>
+
+            {{-- Features Section --}}
+            @if($property->features && count($property->features) > 0)
+                <div class="card">
+                    <h3 style="margin-bottom: 1rem;">Property Features</h3>
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                        @foreach($property->features as $feature)
+                            <span
+                                style="background: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #065f46; padding: 0.375rem 0.75rem; border-radius: 1rem; font-size: 0.8rem; font-weight: 500;">
+                                ✓ {{ $feature }}
+                            </span>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
 
             <div class="card">
                 <h3 style="margin-bottom: 1rem;">Description</h3>
@@ -107,7 +153,8 @@
                 <div>
                     <strong>Arabic:</strong>
                     <p style="margin-top: 0.5rem; color: #4b5563;" dir="rtl">
-                        {{ $property->description_ar ?? 'لا يوجد وصف' }}</p>
+                        {{ $property->description_ar ?? 'لا يوجد وصف' }}
+                    </p>
                 </div>
             </div>
 
@@ -198,7 +245,12 @@
         </div>
     </div>
 
+    @push('styles')
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    @endpush
+
     @push('scripts')
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
         <script>
             function showRejectModal() {
                 document.getElementById('rejectModal').style.display = 'flex';
@@ -206,6 +258,19 @@
             function hideRejectModal() {
                 document.getElementById('rejectModal').style.display = 'none';
             }
+
+            // Initialize map if coordinates exist
+            @if($property->latitude && $property->longitude)
+                document.addEventListener('DOMContentLoaded', function() {
+                    const map = L.map('admin-property-map').setView([{{ $property->latitude }}, {{ $property->longitude }}], 15);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '© OpenStreetMap'
+                    }).addTo(map);
+                    L.marker([{{ $property->latitude }}, {{ $property->longitude }}]).addTo(map)
+                        .bindPopup('{{ Str::limit($property->title_en, 50) }}')
+                        .openPopup();
+                });
+            @endif
         </script>
     @endpush
 @endsection

@@ -112,6 +112,9 @@ class PropertyController extends Controller
             'area_sqm' => 'nullable|integer|min:0',
             'bedrooms' => 'nullable|integer|min:0|max:20',
             'bathrooms' => 'nullable|integer|min:0|max:20',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
+            'features' => 'nullable|array',
             'virtual_tour_url' => 'nullable|url|max:500',
             'virtual_tour_type' => 'nullable|in:matterport,youtube_360,custom',
             'rega_ad_license' => 'nullable|string|max:50',
@@ -133,6 +136,9 @@ class PropertyController extends Controller
             'area_sqm' => $request->area_sqm,
             'bedrooms' => $request->bedrooms,
             'bathrooms' => $request->bathrooms,
+            'latitude' => $request->latitude,
+            'longitude' => $request->longitude,
+            'features' => $request->features,
             'virtual_tour_url' => $request->virtual_tour_url,
             'virtual_tour_type' => $request->virtual_tour_type,
             'rega_ad_license' => $request->rega_ad_license,
@@ -195,6 +201,9 @@ class PropertyController extends Controller
             'area_sqm' => 'nullable|integer|min:0',
             'bedrooms' => 'nullable|integer|min:0|max:20',
             'bathrooms' => 'nullable|integer|min:0|max:20',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
+            'features' => 'nullable|array',
             'virtual_tour_url' => 'nullable|url|max:500',
             'virtual_tour_type' => 'nullable|in:matterport,youtube_360,custom',
             'rega_ad_license' => 'nullable|string|max:50',
@@ -215,10 +224,15 @@ class PropertyController extends Controller
             'area_sqm',
             'bedrooms',
             'bathrooms',
+            'latitude',
+            'longitude',
             'virtual_tour_url',
             'virtual_tour_type',
             'rega_ad_license',
         ]));
+
+        // Handle features separately since it's an array
+        $property->update(['features' => $request->features]);
 
         // Handle new images
         if ($request->hasFile('images')) {

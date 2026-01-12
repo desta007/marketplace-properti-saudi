@@ -123,6 +123,71 @@
                         </select>
                     </div>
                 </div>
+
+                <!-- Coordinates -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div>
+                        <label class="block font-medium mb-2">Latitude</label>
+                        <input type="text" name="latitude" id="latitude"
+                            value="{{ old('latitude', $property->latitude ?? '') }}" placeholder="24.7136"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block font-medium mb-2">Longitude</label>
+                        <input type="text" name="longitude" id="longitude"
+                            value="{{ old('longitude', $property->longitude ?? '') }}" placeholder="46.6753"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                    </div>
+                </div>
+
+                <!-- Map Picker -->
+                <div class="mt-4">
+                    <label class="block font-medium mb-2">📍 Pin Location on Map (click to set coordinates)</label>
+                    <div id="location-map" class="h-64 rounded-xl border border-gray-300 overflow-hidden"></div>
+                    <p class="text-sm text-gray-500 mt-1">Click on the map to set the property location</p>
+                </div>
+            </div>
+
+            <!-- Features -->
+            <div class="bg-white rounded-2xl shadow-lg p-6">
+                <h2 class="text-xl font-bold mb-4">Property Features</h2>
+
+                @php
+                    $availableFeatures = [
+                        'Swimming Pool',
+                        'Garden',
+                        'Garage',
+                        'Security',
+                        'Gym',
+                        'Central AC',
+                        'Elevator',
+                        'Maid Room',
+                        'Driver Room',
+                        'Storage',
+                        'Balcony',
+                        'Private Pool',
+                        'Covered Parking',
+                        'Smart Home',
+                        'Furnished',
+                        'Pet Friendly',
+                        'Built-in Kitchen',
+                        'Walk-in Closet',
+                        'Study Room',
+                        'Basement'
+                    ];
+                    $selectedFeatures = old('features', $property->features ?? []) ?: [];
+                @endphp
+
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    @foreach($availableFeatures as $feature)
+                        <label
+                            class="flex items-center gap-2 p-3 border border-gray-200 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+                            <input type="checkbox" name="features[]" value="{{ $feature }}" {{ in_array($feature, $selectedFeatures) ? 'checked' : '' }}
+                                class="w-5 h-5 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500">
+                            <span class="text-sm">{{ $feature }}</span>
+                        </label>
+                    @endforeach
+                </div>
             </div>
 
             <!-- Property Specs -->
@@ -204,23 +269,33 @@
             <!-- Images -->
             <div class="bg-white rounded-2xl shadow-lg p-6">
                 <h2 class="text-xl font-bold mb-4">Property Images</h2>
+                <p class="text-gray-500 text-sm mb-4">You can select multiple images at once. First image will be the
+                    primary/cover image.</p>
 
-                <div
-                    class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-emerald-500 transition-colors">
-                    <input type="file" name="images[]" id="images" multiple accept="image/*" class="hidden"
-                        onchange="previewImages(this)">
-                    <label for="images" class="cursor-pointer">
-                        <svg class="w-12 h-12 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor"
-                            viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <p class="text-gray-600">Click to upload images</p>
-                        <p class="text-sm text-gray-400 mt-1">JPG, PNG (max 5MB each)</p>
-                    </label>
+                <div id="upload-area"
+                    class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-emerald-500 transition-colors cursor-pointer"
+                    onclick="document.getElementById('images').click()">
+                    <input type="file" name="images[]" id="images" multiple accept="image/jpeg,image/png,image/webp"
+                        class="hidden" onchange="handleImageSelect(this)">
+                    <svg class="w-16 h-16 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <p class="text-gray-600 font-medium">Click to upload images</p>
+                    <p class="text-sm text-gray-400 mt-1">JPG, PNG, WebP (max 5MB each)</p>
+                    <p class="text-sm text-emerald-600 mt-2 font-medium">📷 Select multiple images at once</p>
                 </div>
-                <div id="image_preview" class="grid grid-cols-4 gap-4 mt-4"></div>
+
+                <div id="image_preview" class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4"></div>
+                <div id="image_count" class="text-center text-gray-500 text-sm mt-2 hidden"></div>
+
+                <button type="button" id="add-more-btn" onclick="document.getElementById('images').click()"
+                    class="hidden w-full mt-4 py-3 border-2 border-dashed border-emerald-300 text-emerald-600 rounded-xl hover:bg-emerald-50 transition-colors font-medium">
+                    ➕ Add More Images
+                </button>
+
                 @error('images') <p class="text-red-500 text-sm mt-1">{{ $message }}</p> @enderror
+                @error('images.*') <p class="text-red-500 text-sm mt-1">{{ $message }}</p> @enderror
             </div>
 
             <!-- Submit -->
@@ -243,21 +318,182 @@
 
     @push('scripts')
         <script>
-            function previewImages(input) {
-                const preview = document.getElementById('image_preview');
-                preview.innerHTML = '';
+            // Store all selected files
+                    let selectedFiles = [];
 
-                Array.from(input.files).forEach(file => {
-                    const reader = new FileReader();
-                    reader.onload = function (e) {
-                        const div = document.createElement('div');
-                        div.className = 'relative aspect-video rounded-lg overflow-hidden';
-                        div.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover">`;
-                        preview.appendChild(div);
-                    };
-                    reader.readAsDataURL(file);
-                });
-            }
-        </script>
+                    function handleImageSelect(input) {
+                        const newFiles = Array.from(input.files);
+
+                        // Add new files to array (avoid duplicates by name)
+                        newFiles.forEach(file => {
+                            const exists = selectedFiles.some(f => f.name === file.name && f.size === file.size);
+                            if (!exists) {
+                                selectedFiles.push(file);
+                            }
+                        });
+
+                        updateImagePreview();
+                        updateFileInput();
+                    }
+
+                    function updateImagePreview() {
+                        const preview = document.getElementById('image_preview');
+                        const countDiv = document.getElementById('image_count');
+                        const addMoreBtn = document.getElementById('add-more-btn');
+                        const uploadArea = document.getElementById('upload-area');
+
+                        preview.innerHTML = '';
+
+                        if (selectedFiles.length > 0) {
+                            countDiv.classList.remove('hidden');
+                            countDiv.textContent = `${selectedFiles.length} image${selectedFiles.length > 1 ? 's' : ''} selected`;
+                            addMoreBtn.classList.remove('hidden');
+                            uploadArea.classList.add('hidden');
+                        } else {
+                            countDiv.classList.add('hidden');
+                            addMoreBtn.classList.add('hidden');
+                            uploadArea.classList.remove('hidden');
+                        }
+
+                        selectedFiles.forEach((file, index) => {
+                            const reader = new FileReader();
+                            reader.onload = function(e) {
+                                const div = document.createElement('div');
+                                div.className = 'relative aspect-video rounded-xl overflow-hidden shadow-md group';
+                                div.innerHTML = `
+                                    <img src="${e.target.result}" class="w-full h-full object-cover">
+                                    ${index === 0 ? '<span class="absolute top-2 left-2 bg-emerald-500 text-white text-xs px-2 py-1 rounded-full font-medium">Primary</span>' : ''}
+                                    <button type="button" onclick="removeImage(${index})" 
+                                        class="absolute top-2 right-2 w-8 h-8 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
+                                        ✕
+                                    </button>
+                                    <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
+                                        <p class="text-white text-xs truncate">${file.name}</p>
+                                    </div>
+                                `;
+                                preview.appendChild(div);
+                            };
+                            reader.readAsDataURL(file);
+                        });
+                    }
+
+                    function removeImage(index) {
+                        selectedFiles.splice(index, 1);
+                        updateImagePreview();
+                        updateFileInput();
+                    }
+
+                    function updateFileInput() {
+                        const input = document.getElementById('images');
+                        const dataTransfer = new DataTransfer();
+
+                        selectedFiles.forEach(file => {
+                            dataTransfer.items.add(file);
+                        });
+
+                        input.files = dataTransfer.files;
+                    }
+
+                    // Load districts when city is selected and initialize map
+                    document.addEventListener('DOMContentLoaded', function () {
+                        const citySelect = document.getElementById('city_id');
+                        const districtSelect = document.getElementById('district_id');
+                        const currentDistrictId = '{{ old('district_id', $property->district_id ?? '') }}';
+
+                        citySelect.addEventListener('change', function () {
+                            loadDistricts(this.value);
+                        });
+
+                        // Load districts for initially selected city (for edit mode)
+                        if (citySelect.value) {
+                            loadDistricts(citySelect.value, currentDistrictId);
+                        }
+
+                        function loadDistricts(cityId, selectedDistrictId = null) {
+                            districtSelect.innerHTML = '<option value="">Select District</option>';
+
+                            if (!cityId) return;
+
+                            districtSelect.innerHTML = '<option value="">Loading...</option>';
+                            districtSelect.disabled = true;
+
+                            fetch(`/api/cities/${cityId}/districts`)
+                                .then(response => response.json())
+                                .then(data => {
+                                    districtSelect.innerHTML = '<option value="">Select District</option>';
+
+                                    const districts = data.data || data;
+                                    districts.forEach(district => {
+                                        const option = document.createElement('option');
+                                        option.value = district.id;
+                                        option.textContent = district.name || district.name_en;
+                                        if (selectedDistrictId && district.id == selectedDistrictId) {
+                                            option.selected = true;
+                                        }
+                                        districtSelect.appendChild(option);
+                                    });
+                                })
+                                .catch(error => {
+                                    console.error('Error loading districts:', error);
+                                    districtSelect.innerHTML = '<option value="">Failed to load districts</option>';
+                                })
+                                .finally(() => {
+                                    districtSelect.disabled = false;
+                                });
+                        }
+
+                        // Initialize map for location picker
+                        const latInput = document.getElementById('latitude');
+                        const lngInput = document.getElementById('longitude');
+
+                        // Default to Riyadh center
+                        let lat = parseFloat(latInput.value) || 24.7136;
+                        let lng = parseFloat(lngInput.value) || 46.6753;
+
+                        const map = L.map('location-map').setView([lat, lng], 12);
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                            attribution: '© OpenStreetMap'
+                        }).addTo(map);
+
+                        let marker = null;
+
+                        // If there are existing coordinates, show marker
+                        if (latInput.value && lngInput.value) {
+                            marker = L.marker([lat, lng]).addTo(map);
+                        }
+
+                        // Click on map to set location
+                        map.on('click', function(e) {
+                            const { lat, lng } = e.latlng;
+
+                            latInput.value = lat.toFixed(8);
+                            lngInput.value = lng.toFixed(8);
+
+                            if (marker) {
+                                marker.setLatLng(e.latlng);
+                            } else {
+                                marker = L.marker(e.latlng).addTo(map);
+                            }
+                        });
+
+                        // Update marker when inputs change manually
+                        function updateMarkerFromInputs() {
+                            const lat = parseFloat(latInput.value);
+                            const lng = parseFloat(lngInput.value);
+
+                            if (!isNaN(lat) && !isNaN(lng)) {
+                                if (marker) {
+                                    marker.setLatLng([lat, lng]);
+                                } else {
+                                    marker = L.marker([lat, lng]).addTo(map);
+                                }
+                                map.setView([lat, lng], 15);
+                            }
+                        }
+
+                        latInput.addEventListener('change', updateMarkerFromInputs);
+                        lngInput.addEventListener('change', updateMarkerFromInputs);
+                    });
+                </script>
     @endpush
 @endsection

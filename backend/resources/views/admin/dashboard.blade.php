@@ -12,7 +12,8 @@
             <a href="{{ route('admin.properties.index', ['status' => 'pending']) }}" class="btn btn-primary">
                 📋 Review Properties
             </a>
-            <a href="{{ route('admin.agents.index', ['status' => 'pending']) }}" class="btn btn-secondary">
+            <a href="{{ route('admin.agents.index', ['status' => 'pending']) }}" class="btn"
+                style="background: linear-gradient(135deg, #8b5cf6, #6366f1); color: white; border: none;">
                 👥 Review Agents
             </a>
         </div>

@@ -55,7 +55,8 @@
                         class="text-gray-600 hover:text-emerald-600 font-medium transition-colors {{ request()->routeIs('agents.*') ? 'text-emerald-600' : '' }}">
                         {{ __('nav.agents') }}
                     </a>
-                    <a href="#" class="text-gray-600 hover:text-emerald-600 font-medium transition-colors">
+                    <a href="{{ route('about') }}"
+                        class="text-gray-600 hover:text-emerald-600 font-medium transition-colors {{ request()->routeIs('about') ? 'text-emerald-600' : '' }}">
                         {{ __('nav.about') }}
                     </a>
                 </nav>
@@ -111,6 +112,8 @@
                                 @if(auth()->user()->isAgent())
                                     <a href="{{ route('my-properties') }}"
                                         class="block px-4 py-3 text-start hover:bg-gray-50">{{ __('nav.my_properties') }}</a>
+                                    <a href="{{ route('leads.index') }}" class="block px-4 py-3 text-start hover:bg-gray-50">📩
+                                        My Leads</a>
                                 @else
                                     <a href="{{ route('agent.register') }}"
                                         class="block px-4 py-3 text-start hover:bg-gray-50 text-emerald-600">🏢 Become Agent</a>
@@ -167,8 +170,10 @@
                                 class="hover:text-emerald-400 transition-colors">{{ __('nav.home') }}</a></li>
                         <li><a href="{{ route('properties.index') }}"
                                 class="hover:text-emerald-400 transition-colors">{{ __('nav.properties') }}</a></li>
-                        <li><a href="#" class="hover:text-emerald-400 transition-colors">{{ __('nav.agents') }}</a></li>
-                        <li><a href="#" class="hover:text-emerald-400 transition-colors">{{ __('nav.about') }}</a></li>
+                        <li><a href="{{ route('agents.index') }}"
+                                class="hover:text-emerald-400 transition-colors">{{ __('nav.agents') }}</a></li>
+                        <li><a href="{{ route('about') }}"
+                                class="hover:text-emerald-400 transition-colors">{{ __('nav.about') }}</a></li>
                     </ul>
                 </div>
                 <div>
@@ -187,9 +192,9 @@
                 <div>
                     <h4 class="font-bold mb-4">{{ __('footer.contact') }}</h4>
                     <ul class="space-y-2 text-gray-400">
-                        <li>📧 info@saudiprop.com</li>
-                        <li>📱 +966 50 123 4567</li>
-                        <li>📍 Riyadh, Saudi Arabia</li>
+                        <li>📧 {{ \App\Models\Setting::get('site_email', 'info@saudiprop.com') }}</li>
+                        <li>📱 {{ \App\Models\Setting::get('site_phone', '+966 50 123 4567') }}</li>
+                        <li>📍 {{ \App\Models\Setting::get('site_address', 'Riyadh, Saudi Arabia') }}</li>
                     </ul>
                 </div>
             </div>
@@ -198,6 +203,127 @@
             </div>
         </div>
     </footer>
+
+    <!-- Favorite Toggle Script -->
+    @auth
+        <script>
+            function toggleFavorite(propertyId) {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                const button = document.querySelector(`.favorite-btn[data-property="${propertyId}"]`);
+                const svg = button.querySelector('svg');
+
+                // Disable button during request
+                button.disabled = true;
+                button.style.opacity = '0.5';
+
+                fetch(`/favorites/${propertyId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    },
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Toggle the heart icon style
+                            if (svg.classList.contains('text-red-500')) {
+                                // Was favorited, now unfavorite
+                                svg.classList.remove('text-red-500', 'fill-current');
+                                svg.classList.add('text-gray-600');
+                            } else {
+                                // Was not favorited, now favorite
+                                svg.classList.remove('text-gray-600');
+                                svg.classList.add('text-red-500', 'fill-current');
+                            }
+
+                            // Show toast notification
+                            showToast(data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showToast('An error occurred. Please try again.', 'error');
+                    })
+                    .finally(() => {
+                        // Re-enable button
+                        button.disabled = false;
+                        button.style.opacity = '1';
+                    });
+            }
+
+            function showToast(message, type = 'success') {
+                // Create toast element
+                const toast = document.createElement('div');
+                toast.className = `fixed bottom-4 end-4 px-6 py-3 rounded-xl shadow-lg z-50 transform transition-all duration-300 translate-y-full ${type === 'success' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'
+                    }`;
+                toast.textContent = message;
+                document.body.appendChild(toast);
+
+                // Animate in
+                setTimeout(() => {
+                    toast.classList.remove('translate-y-full');
+                }, 10);
+
+                // Remove after 3 seconds
+                setTimeout(() => {
+                    toast.classList.add('translate-y-full');
+                    setTimeout(() => {
+                        toast.remove();
+                    }, 300);
+                }, 3000);
+            }
+
+            // Special function for favorites page - removes card after unfavoriting
+            function toggleFavoriteAndRemove(propertyId, buttonElement) {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                const card = buttonElement.closest('.bg-white.rounded-2xl');
+
+                // Disable button during request
+                buttonElement.disabled = true;
+                buttonElement.style.opacity = '0.5';
+
+                fetch(`/favorites/${propertyId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    },
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Animate card removal
+                            card.style.transition = 'all 0.3s ease-out';
+                            card.style.opacity = '0';
+                            card.style.transform = 'scale(0.9)';
+
+                            setTimeout(() => {
+                                card.remove();
+
+                                // Check if grid is empty and show empty state
+                                const grid = document.querySelector('.grid');
+                                if (grid && grid.children.length === 0) {
+                                    location.reload(); // Reload to show empty state
+                                }
+                            }, 300);
+
+                            showToast(data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showToast('An error occurred. Please try again.', 'error');
+                        buttonElement.disabled = false;
+                        buttonElement.style.opacity = '1';
+                    });
+            }
+        </script>
+    @endauth
 
     @stack('scripts')
 </body>

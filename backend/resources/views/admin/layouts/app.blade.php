@@ -41,7 +41,8 @@
             color: white;
             position: fixed;
             height: 100vh;
-            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
             box-shadow: 4px 0 25px rgba(0, 0, 0, 0.15);
             transition: all 0.3s ease;
             z-index: 100;
@@ -145,6 +146,8 @@
 
         .sidebar-nav {
             padding: 1rem;
+            flex: 1;
+            overflow-y: auto;
         }
 
         .nav-section {
@@ -195,19 +198,21 @@
         .sidebar-footer {
             padding: 1rem 1.5rem;
             border-top: 1px solid rgba(255, 255, 255, 0.1);
-            margin-top: auto;
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(0, 0, 0, 0.2);
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(15, 23, 42, 1) 100%);
+            flex-shrink: 0;
         }
 
         .user-info {
             display: flex;
             align-items: center;
             gap: 0.75rem;
-            margin-bottom: 1rem;
+        }
+
+        .user-info-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
         }
 
         .user-avatar {
@@ -787,22 +792,40 @@
                         <span class="icon">🌐</span> <span>View Website</span>
                     </a>
                 </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Configuration</div>
+                    <a href="{{ route('admin.settings.index') }}"
+                        class="{{ request()->routeIs('admin.settings.*') ? 'active' : '' }}">
+                        <span class="icon">⚙️</span> <span>Settings</span>
+                    </a>
+                </div>
             </nav>
 
             <div class="sidebar-footer">
-                <div class="user-info">
-                    <div class="user-avatar">{{ substr(auth()->user()->name, 0, 1) }}</div>
-                    <div class="user-details">
-                        <h4>{{ auth()->user()->name }}</h4>
-                        <p>Administrator</p>
+                <div class="user-info-wrapper">
+                    <div class="user-info">
+                        <div class="user-avatar">{{ substr(auth()->user()->name, 0, 1) }}</div>
+                        <div class="user-details">
+                            <h4>{{ auth()->user()->name }}</h4>
+                            <p>Administrator</p>
+                        </div>
                     </div>
+                    <form action="{{ route('logout') }}" method="POST" style="margin: 0;">
+                        @csrf
+                        <button type="submit"
+                            style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: none; cursor: pointer; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; transition: all 0.2s;"
+                            title="Logout" onmouseover="this.style.background='rgba(239, 68, 68, 0.3)'"
+                            onmouseout="this.style.background='rgba(239, 68, 68, 0.15)'">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                <polyline points="16 17 21 12 16 7"></polyline>
+                                <line x1="21" y1="12" x2="9" y2="12"></line>
+                            </svg>
+                        </button>
+                    </form>
                 </div>
-                <form action="{{ route('logout') }}" method="POST">
-                    @csrf
-                    <button type="submit" class="btn btn-secondary" style="width: 100%;">
-                        🚪 <span>Logout</span>
-                    </button>
-                </form>
             </div>
         </aside>
 

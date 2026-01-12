@@ -26,16 +26,14 @@
                                 </span>
                             </div>
                             <!-- Remove from favorites -->
-                            <form action="{{ route('favorites.toggle', $property) }}" method="POST" class="absolute top-3 right-3">
-                                @csrf
-                                <button type="submit"
-                                    class="w-10 h-10 rounded-full bg-white/80 backdrop-blur flex items-center justify-center hover:bg-white transition-colors">
-                                    <svg class="w-5 h-5 text-red-500" fill="currentColor" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                                    </svg>
-                                </button>
-                            </form>
+                            <button onclick="toggleFavoriteAndRemove({{ $property->id }}, this)"
+                                class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/80 backdrop-blur flex items-center justify-center hover:bg-white transition-colors favorite-btn"
+                                data-property="{{ $property->id }}">
+                                <svg class="w-5 h-5 text-red-500 fill-current" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                </svg>
+                            </button>
                         </div>
                         <div class="p-5">
                             <h3 class="font-bold text-lg text-gray-900 line-clamp-1 mb-2">{{ $property->title }}</h3>

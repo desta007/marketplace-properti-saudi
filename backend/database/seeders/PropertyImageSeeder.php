@@ -11,6 +11,7 @@ class PropertyImageSeeder extends Seeder
 {
     /**
      * Run the database seeds.
+     * Uses high-quality real estate images from Unsplash for each property type
      */
     public function run(): void
     {
@@ -21,35 +22,36 @@ class PropertyImageSeeder extends Seeder
             return;
         }
 
-        // Sample property images from picsum.photos (placeholder images)
+        // Real property images from Unsplash (using source.unsplash.com for direct access)
+        // Images are selected to match Saudi Arabian architecture and real estate styles
         $imageCategories = [
             'villa' => [
-                'https://picsum.photos/seed/villa1/800/600',
-                'https://picsum.photos/seed/villa2/800/600',
-                'https://picsum.photos/seed/villa3/800/600',
-                'https://picsum.photos/seed/villainterior1/800/600',
-                'https://picsum.photos/seed/villainterior2/800/600',
+                'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800&h=600&fit=crop', // Modern villa exterior
+                'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&h=600&fit=crop', // Luxury villa
+                'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&h=600&fit=crop', // Villa interior
+                'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800&h=600&fit=crop', // Villa pool
+                'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&h=600&fit=crop', // Villa living room
             ],
             'apartment' => [
-                'https://picsum.photos/seed/apt1/800/600',
-                'https://picsum.photos/seed/apt2/800/600',
-                'https://picsum.photos/seed/apt3/800/600',
-                'https://picsum.photos/seed/aptinterior1/800/600',
+                'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800&h=600&fit=crop', // Modern apartment building
+                'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&h=600&fit=crop', // Apartment interior
+                'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&h=600&fit=crop', // Apartment living space
+                'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800&h=600&fit=crop', // Apartment room
             ],
             'compound' => [
-                'https://picsum.photos/seed/compound1/800/600',
-                'https://picsum.photos/seed/compound2/800/600',
-                'https://picsum.photos/seed/compound3/800/600',
-                'https://picsum.photos/seed/compoundpool/800/600',
+                'https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=800&h=600&fit=crop', // Compound villa
+                'https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=800&h=600&fit=crop', // Compound exterior
+                'https://images.unsplash.com/photo-1600573472592-401b489a3cdc?w=800&h=600&fit=crop', // Compound pool area
+                'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=800&h=600&fit=crop', // Compound garden
             ],
             'land' => [
-                'https://picsum.photos/seed/land1/800/600',
-                'https://picsum.photos/seed/land2/800/600',
+                'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&h=600&fit=crop', // Land plot
+                'https://images.unsplash.com/photo-1628624747186-a941c476b7ef?w=800&h=600&fit=crop', // Commercial land
             ],
             'office' => [
-                'https://picsum.photos/seed/office1/800/600',
-                'https://picsum.photos/seed/office2/800/600',
-                'https://picsum.photos/seed/office3/800/600',
+                'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&h=600&fit=crop', // Office building
+                'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&h=600&fit=crop', // Office interior
+                'https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=800&h=600&fit=crop', // Office space
             ],
         ];
 
@@ -65,12 +67,23 @@ class PropertyImageSeeder extends Seeder
 
             foreach ($images as $index => $imageUrl) {
                 try {
-                    // Download image
-                    $imageContent = @file_get_contents($imageUrl);
+                    // Download image with timeout
+                    $context = stream_context_create([
+                        'http' => [
+                            'timeout' => 30,
+                            'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                        ],
+                        'ssl' => [
+                            'verify_peer' => false,
+                            'verify_peer_name' => false,
+                        ]
+                    ]);
+
+                    $imageContent = @file_get_contents($imageUrl, false, $context);
 
                     if ($imageContent === false) {
-                        // If download fails, create a simple placeholder
-                        $this->command->warn("Could not download image for property {$property->id}, creating placeholder");
+                        // If download fails, create placeholder message
+                        $this->command->warn("Could not download image for property {$property->id}, skipping");
                         continue;
                     }
 
@@ -95,6 +108,6 @@ class PropertyImageSeeder extends Seeder
             }
         }
 
-        $this->command->info("Created {$count} property images.");
+        $this->command->info("Created {$count} property images from Unsplash.");
     }
 }

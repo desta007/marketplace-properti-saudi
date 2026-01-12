@@ -50,5 +50,11 @@ class DatabaseSeeder extends Seeder
             'language' => 'ar',
             'email_verified_at' => now(),
         ]);
+
+        // Run property seeders
+        $this->call([
+            PropertySeeder::class,
+            PropertyImageSeeder::class,
+        ]);
     }
 }

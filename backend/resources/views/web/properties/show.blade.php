@@ -105,18 +105,15 @@
                             </p>
                         </div>
                         @auth
-                            <form action="{{ route('favorites.toggle', $property) }}" method="POST">
-                                @csrf
-                                <button type="submit"
-                                    class="w-12 h-12 flex items-center justify-center rounded-full bg-gray-100 hover:bg-red-50 transition-colors">
-                                    <svg class="w-6 h-6 {{ auth()->user()->favorites->contains($property->id) ? 'text-red-500 fill-current' : 'text-gray-600' }}"
-                                        fill="{{ auth()->user()->favorites->contains($property->id) ? 'currentColor' : 'none' }}"
-                                        stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                                    </svg>
-                                </button>
-                            </form>
+                            <button onclick="toggleFavorite({{ $property->id }})"
+                                class="w-12 h-12 flex items-center justify-center rounded-full bg-gray-100 hover:bg-red-50 transition-colors favorite-btn"
+                                data-property="{{ $property->id }}">
+                                <svg class="w-6 h-6 {{ auth()->user()->favorites->contains($property->id) ? 'text-red-500 fill-current' : 'text-gray-600' }}"
+                                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                </svg>
+                            </button>
                         @else
                             <a href="{{ route('login') }}"
                                 class="w-12 h-12 flex items-center justify-center rounded-full bg-gray-100 hover:bg-red-50 transition-colors">
@@ -172,7 +169,8 @@
                     <!-- Description -->
                     <h2 class="text-lg font-bold mb-4">{{ __('detail.description') }}</h2>
                     <p class="text-gray-600 leading-relaxed mb-6 whitespace-pre-line">
-                        {{ $property->description ?? 'No description provided.' }}</p>
+                        {{ $property->description ?? 'No description provided.' }}
+                    </p>
 
                     <!-- Features -->
                     @if($property->features && count($property->features) > 0)
@@ -326,10 +324,9 @@
                 onclick="document.getElementById('inquiry-modal').classList.add('hidden')"></div>
             <div
                 class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                <form action="/api/leads" method="POST" id="inquiry-form">
-                    @csrf
+                <form id="inquiry-form">
                     <input type="hidden" name="property_id" value="{{ $property->id }}">
-                    <input type="hidden" name="source" value="website">
+                    <input type="hidden" name="source" value="form">
                     <div class="bg-white px-6 py-6">
                         <h3 class="text-xl font-bold mb-4">Send Inquiry</h3>
                         <div class="space-y-4">
@@ -343,8 +340,7 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
                                 <input type="tel" name="seeker_phone" required
                                     class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                    placeholder="+966 50 123 4567"
-                                    value="{{ auth()->user()?->phone ?? '' }}">
+                                    placeholder="+966 50 123 4567" value="{{ auth()->user()?->phone ?? '' }}">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Message</label>
@@ -377,6 +373,71 @@
 @endsection
 
 @push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const inquiryForm = document.getElementById('inquiry-form');
+            const submitBtn = document.getElementById('inquiry-submit');
+            const successDiv = document.getElementById('inquiry-success');
+            const errorDiv = document.getElementById('inquiry-error');
+
+            inquiryForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+
+                // Hide previous messages
+                successDiv.classList.add('hidden');
+                errorDiv.classList.add('hidden');
+
+                // Disable button
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Sending...';
+
+                const formData = new FormData(inquiryForm);
+                const data = {};
+                formData.forEach((value, key) => data[key] = value);
+
+                fetch('/api/leads', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify(data)
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.json().then(err => Promise.reject(err));
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        successDiv.classList.remove('hidden');
+                        // Reset form fields except hidden ones
+                        inquiryForm.querySelector('[name="seeker_name"]').value = '';
+                        inquiryForm.querySelector('[name="seeker_phone"]').value = '';
+                        inquiryForm.querySelector('[name="message"]').value = '';
+
+                        // Close modal after 2 seconds
+                        setTimeout(() => {
+                            document.getElementById('inquiry-modal').classList.add('hidden');
+                            successDiv.classList.add('hidden');
+                        }, 2000);
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        errorDiv.classList.remove('hidden');
+                        if (error.message) {
+                            errorDiv.textContent = '❌ ' + error.message;
+                        }
+                    })
+                    .finally(() => {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Send Inquiry';
+                    });
+            });
+        });
+    </script>
+
     @if($property->latitude && $property->longitude)
         <script>
             document.addEventListener('DOMContentLoaded', function () {

@@ -72,11 +72,12 @@
                                 @if($agent->rega_license_number)
                                     <code
                                         style="background: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #065f46; padding: 0.375rem 0.75rem; border-radius: 8px; font-size: 0.8rem; font-weight: 600;">
-                                                    {{ $agent->rega_license_number }}
-                                                </code>
+                                                                            {{ $agent->rega_license_number }}
+                                                                        </code>
                                     @if($agent->rega_license_document)
                                         <a href="{{ asset('storage/' . $agent->rega_license_document) }}" target="_blank"
-                                            style="display: block; margin-top: 0.25rem; font-size: 0.7rem; color: #64748b;">
+                                            style="display: inline-flex; align-items: center; gap: 0.25rem; margin-top: 0.375rem; padding: 0.2rem 0.5rem; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; font-size: 0.65rem; font-weight: 500; border-radius: 4px; text-decoration: none; box-shadow: 0 1px 2px rgba(59, 130, 246, 0.25);"
+                                            onmouseover="this.style.opacity='0.9';" onmouseout="this.style.opacity='1';">
                                             📄 View Document
                                         </a>
                                     @endif
