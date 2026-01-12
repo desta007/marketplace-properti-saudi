@@ -114,6 +114,9 @@
                                         class="block px-4 py-3 text-start hover:bg-gray-50">{{ __('nav.my_properties') }}</a>
                                     <a href="{{ route('leads.index') }}" class="block px-4 py-3 text-start hover:bg-gray-50">📩
                                         My Leads</a>
+                                    <a href="{{ route('subscription.index') }}"
+                                        class="block px-4 py-3 text-start hover:bg-gray-50">💳
+                                        Subscription</a>
                                 @else
                                     <a href="{{ route('agent.register') }}"
                                         class="block px-4 py-3 text-start hover:bg-gray-50 text-emerald-600">🏢 Become Agent</a>

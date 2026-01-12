@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use App\Models\City;
+use App\Models\Feature;
 use App\Models\Property;
 use App\Models\PropertyImage;
 use Illuminate\Http\Request;
@@ -16,7 +17,7 @@ class PropertyController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Property::with(['city', 'district', 'images'])
+        $query = Property::with(['city', 'district', 'images', 'activeBoost'])
             ->where('status', 'active');
 
         // Apply filters
@@ -39,7 +40,10 @@ class PropertyController extends Controller
             $query->where('bedrooms', '>=', $request->bedrooms);
         }
 
-        // Sort
+        // Always prioritize boosted properties first
+        $query->orderByBoostPriority();
+
+        // Then apply user sorting
         $sortBy = $request->get('sort', 'newest');
         switch ($sortBy) {
             case 'price_low':
@@ -90,8 +94,25 @@ class PropertyController extends Controller
      */
     public function create()
     {
+        $user = auth()->user();
+
+        // Check if user can create more listings
+        if (!$user->canCreateListing()) {
+            return redirect()->route('subscription.index')
+                ->with('error', 'You have reached your listing limit. Please upgrade your plan or purchase listing credits to post more properties.');
+        }
+
         $cities = City::where('is_active', true)->orderBy('name_en')->get();
-        return view('web.properties.create', compact('cities'));
+        $features = Feature::active()->ordered()->get();
+
+        // Pass quota info to view
+        $quotaInfo = [
+            'remaining' => $user->getRemainingListingSlots(),
+            'limit' => $user->getListingLimit(),
+            'credits' => $user->getAvailableListingCredits(),
+        ];
+
+        return view('web.properties.create', compact('cities', 'features', 'quotaInfo'));
     }
 
     /**
@@ -99,6 +120,14 @@ class PropertyController extends Controller
      */
     public function store(Request $request)
     {
+        $user = auth()->user();
+
+        // Check if user can create more listings
+        if (!$user->canCreateListing()) {
+            return redirect()->route('subscription.index')
+                ->with('error', 'You have reached your listing limit. Please upgrade your plan or purchase listing credits.');
+        }
+
         $request->validate([
             'title_en' => 'required|string|max:255',
             'title_ar' => 'required|string|max:255',
@@ -121,6 +150,12 @@ class PropertyController extends Controller
             'images' => 'nullable|array',
             'images.*' => 'image|max:5120',
         ]);
+
+        // Use listing slot (will consume credit if needed)
+        if (!$user->useListingSlot()) {
+            return redirect()->route('subscription.index')
+                ->with('error', 'Unable to use listing slot. Please check your subscription or credits.');
+        }
 
         $property = Property::create([
             'user_id' => auth()->id(),
@@ -174,8 +209,9 @@ class PropertyController extends Controller
 
         $cities = City::where('is_active', true)->orderBy('name_en')->get();
         $districts = $property->city?->districts ?? collect();
+        $features = Feature::active()->ordered()->get();
 
-        return view('web.properties.create', compact('property', 'cities', 'districts'));
+        return view('web.properties.create', compact('property', 'cities', 'districts', 'features'));
     }
 
     /**
@@ -257,13 +293,25 @@ class PropertyController extends Controller
      */
     public function myProperties()
     {
-        $properties = auth()->user()
+        $user = auth()->user();
+
+        $properties = $user
             ->properties()
-            ->with(['city', 'images'])
+            ->with(['city', 'images', 'activeBoost'])
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
-        return view('web.properties.my-properties', compact('properties'));
+        // Quota info for display
+        $quotaInfo = [
+            'remaining' => $user->getRemainingListingSlots(),
+            'limit' => $user->getListingLimit(),
+            'used' => $user->properties()->whereIn('status', ['active', 'pending'])->count(),
+            'credits' => $user->getAvailableListingCredits(),
+            'featured_credits' => $user->getRemainingFeaturedCredits(),
+            'can_create' => $user->canCreateListing(),
+        ];
+
+        return view('web.properties.my-properties', compact('properties', 'quotaInfo'));
     }
 
     /**

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Property extends Model
@@ -80,6 +81,27 @@ class Property extends Model
     }
 
     /**
+     * All boosts for this property
+     */
+    public function boosts(): HasMany
+    {
+        return $this->hasMany(PropertyBoost::class);
+    }
+
+    /**
+     * Current active boost
+     */
+    public function activeBoost(): HasOne
+    {
+        return $this->hasOne(PropertyBoost::class)
+            ->where('is_active', true)
+            ->where('starts_at', '<=', now())
+            ->where('ends_at', '>=', now())
+            ->orderByRaw("FIELD(boost_type, 'premium', 'top_pick', 'featured')")
+            ->latest();
+    }
+
+    /**
      * Get title based on locale
      */
     public function getTitleAttribute(): string
@@ -106,11 +128,110 @@ class Property extends Model
     }
 
     /**
+     * Check if property is currently featured/boosted
+     */
+    public function isFeatured(): bool
+    {
+        return $this->activeBoost !== null;
+    }
+
+    /**
+     * Get current boost type
+     */
+    public function getBoostType(): ?string
+    {
+        return $this->activeBoost?->boost_type;
+    }
+
+    /**
+     * Get boost priority value for sorting (higher = more priority)
+     */
+    public function getBoostPriority(): int
+    {
+        $boost = $this->activeBoost;
+        if (!$boost) {
+            return 0;
+        }
+
+        return match ($boost->boost_type) {
+            'premium' => 3,
+            'top_pick' => 2,
+            'featured' => 1,
+            default => 0,
+        };
+    }
+
+    /**
+     * Get boost badge info for display
+     */
+    public function getBoostBadgeAttribute(): ?array
+    {
+        $boost = $this->activeBoost;
+        if (!$boost) {
+            return null;
+        }
+
+        return match ($boost->boost_type) {
+            'premium' => [
+                'label' => __('Premium'),
+                'class' => 'bg-gradient-to-r from-yellow-400 to-amber-500 text-white',
+                'icon' => 'crown',
+            ],
+            'top_pick' => [
+                'label' => __('Top Pick'),
+                'class' => 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white',
+                'icon' => 'star',
+            ],
+            'featured' => [
+                'label' => __('Featured'),
+                'class' => 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white',
+                'icon' => 'sparkles',
+            ],
+            default => null,
+        };
+    }
+
+    /**
      * Scope for active properties
      */
     public function scopeActive($query)
     {
         return $query->where('status', 'active');
+    }
+
+    /**
+     * Scope for featured/boosted properties
+     */
+    public function scopeFeatured($query)
+    {
+        return $query->whereHas('boosts', function ($q) {
+            $q->where('is_active', true)
+                ->where('starts_at', '<=', now())
+                ->where('ends_at', '>=', now());
+        });
+    }
+
+    /**
+     * Scope to order by boost priority (featured first)
+     */
+    public function scopeOrderByBoostPriority($query)
+    {
+        return $query->leftJoin('property_boosts', function ($join) {
+            $join->on('properties.id', '=', 'property_boosts.property_id')
+                ->where('property_boosts.is_active', true)
+                ->where('property_boosts.starts_at', '<=', now())
+                ->where('property_boosts.ends_at', '>=', now());
+        })
+            ->select('properties.*')
+            ->orderByRaw("
+            CASE 
+                WHEN property_boosts.boost_type = 'premium' THEN 3
+                WHEN property_boosts.boost_type = 'top_pick' THEN 2
+                WHEN property_boosts.boost_type = 'featured' THEN 1
+                ELSE 0
+            END DESC
+        ")
+            ->groupBy('properties.id');
     }
 
     /**
@@ -177,4 +298,5 @@ class Property extends Model
         return $query->whereNotNull('virtual_tour_url');
     }
 }
+
 

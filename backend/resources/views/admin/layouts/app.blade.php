@@ -794,10 +794,34 @@
                 </div>
 
                 <div class="nav-section">
+                    <div class="nav-section-title">SaaS Management</div>
+                    <a href="{{ route('admin.subscriptions.index') }}"
+                        class="{{ request()->routeIs('admin.subscriptions.*') ? 'active' : '' }}">
+                        <span class="icon">🔄</span> <span>Subscriptions</span>
+                    </a>
+                    <a href="{{ route('admin.transactions.index') }}"
+                        class="{{ request()->routeIs('admin.transactions.*') ? 'active' : '' }}">
+                        <span class="icon">💰</span> <span>Transactions</span>
+                    </a>
+                    <a href="{{ route('admin.subscription-plans.index') }}"
+                        class="{{ request()->routeIs('admin.subscription-plans.*') ? 'active' : '' }}">
+                        <span class="icon">💳</span> <span>Plans</span>
+                    </a>
+                    <a href="{{ route('admin.boost-packages.index') }}"
+                        class="{{ request()->routeIs('admin.boost-packages.*') ? 'active' : '' }}">
+                        <span class="icon">🚀</span> <span>Boost Packages</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
                     <div class="nav-section-title">Configuration</div>
                     <a href="{{ route('admin.settings.index') }}"
                         class="{{ request()->routeIs('admin.settings.*') ? 'active' : '' }}">
                         <span class="icon">⚙️</span> <span>Settings</span>
+                    </a>
+                    <a href="{{ route('admin.features.index') }}"
+                        class="{{ request()->routeIs('admin.features.*') ? 'active' : '' }}">
+                        <span class="icon">✨</span> <span>Features</span>
                     </a>
                 </div>
             </nav>

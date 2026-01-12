@@ -16,16 +16,19 @@ class HomeController extends Controller
     {
         // Get cities with property counts
         $cities = City::where('is_active', true)
-            ->withCount(['properties' => function ($query) {
-                $query->where('status', 'active');
-            }])
+            ->withCount([
+                'properties' => function ($query) {
+                    $query->where('status', 'active');
+                }
+            ])
             ->orderByDesc('properties_count')
             ->limit(5)
             ->get();
 
-        // Get featured properties
-        $featuredProperties = Property::with(['city', 'district', 'images'])
+        // Get boosted/featured properties first, then by views
+        $featuredProperties = Property::with(['city', 'district', 'images', 'activeBoost'])
             ->where('status', 'active')
+            ->orderByBoostPriority()
             ->orderByDesc('view_count')
             ->limit(8)
             ->get();

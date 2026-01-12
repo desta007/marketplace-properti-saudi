@@ -7,11 +7,14 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class User extends Authenticatable
 {
     use HasFactory, Notifiable, HasApiTokens;
+
+    const FREE_LISTING_LIMIT = 2;
 
     /**
      * The attributes that are mass assignable.
@@ -77,6 +80,44 @@ class User extends Authenticatable
     }
 
     /**
+     * All subscriptions for this user
+     */
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(Subscription::class);
+    }
+
+    /**
+     * Current active subscription
+     */
+    public function activeSubscription(): HasOne
+    {
+        return $this->hasOne(Subscription::class)
+            ->where('status', 'active')
+            ->where(function ($q) {
+                $q->whereNull('ends_at')
+                    ->orWhere('ends_at', '>=', now());
+            })
+            ->latest();
+    }
+
+    /**
+     * All transactions for this user
+     */
+    public function transactions(): HasMany
+    {
+        return $this->hasMany(Transaction::class);
+    }
+
+    /**
+     * All listing credits for this user
+     */
+    public function listingCredits(): HasMany
+    {
+        return $this->hasMany(ListingCredit::class);
+    }
+
+    /**
      * Check if user is an agent
      */
     public function isAgent(): bool
@@ -106,6 +147,144 @@ class User extends Authenticatable
     public function isPendingAgent(): bool
     {
         return $this->isAgent() && $this->agent_status === 'pending';
+    }
+
+    /**
+     * Check if user has active subscription
+     */
+    public function hasActiveSubscription(): bool
+    {
+        return $this->activeSubscription !== null;
+    }
+
+    /**
+     * Get current subscription plan
+     */
+    public function getCurrentPlan(): ?SubscriptionPlan
+    {
+        $subscription = $this->activeSubscription;
+        return $subscription ? $subscription->plan : null;
+    }
+
+    /**
+     * Get listing limit based on subscription
+     * Returns null for unlimited
+     */
+    public function getListingLimit(): ?int
+    {
+        $plan = $this->getCurrentPlan();
+
+        if ($plan) {
+            return $plan->listing_limit; // null = unlimited
+        }
+
+        // No subscription = free tier limit
+        return self::FREE_LISTING_LIMIT;
+    }
+
+    /**
+     * Get count of active listings
+     */
+    public function getActiveListingsCount(): int
+    {
+        return $this->properties()
+            ->whereIn('status', ['pending', 'active'])
+            ->count();
+    }
+
+    /**
+     * Get remaining listing slots
+     * Returns PHP_INT_MAX for unlimited
+     */
+    public function getRemainingListingSlots(): int
+    {
+        $limit = $this->getListingLimit();
+
+        if ($limit === null) {
+            return PHP_INT_MAX; // Unlimited
+        }
+
+        $used = $this->getActiveListingsCount();
+        $remaining = $limit - $used;
+
+        // Add available listing credits
+        $credits = $this->getAvailableListingCredits();
+
+        return max(0, $remaining) + $credits;
+    }
+
+    /**
+     * Get available listing credits
+     */
+    public function getAvailableListingCredits(): int
+    {
+        return $this->listingCredits()
+            ->usable()
+            ->get()
+            ->sum('remaining_credits');
+    }
+
+    /**
+     * Check if user can create a new listing
+     */
+    public function canCreateListing(): bool
+    {
+        return $this->getRemainingListingSlots() > 0;
+    }
+
+    /**
+     * Use a listing slot (either from subscription quota or credits)
+     * Returns true if successful
+     */
+    public function useListingSlot(): bool
+    {
+        $limit = $this->getListingLimit();
+
+        // Unlimited subscription
+        if ($limit === null) {
+            return true;
+        }
+
+        // Check if within base quota
+        $used = $this->getActiveListingsCount();
+        if ($used < $limit) {
+            return true; // Within quota, no need to deduct credits
+        }
+
+        // Need to use a listing credit
+        $credit = $this->listingCredits()
+            ->usable()
+            ->orderBy('expires_at')
+            ->first();
+
+        if ($credit) {
+            return $credit->useCredit();
+        }
+
+        return false;
+    }
+
+    /**
+     * Get remaining featured credits from active subscription
+     */
+    public function getRemainingFeaturedCredits(): int
+    {
+        $subscription = $this->activeSubscription;
+        return $subscription ? $subscription->featured_credits_remaining : 0;
+    }
+
+    /**
+     * Use a featured credit from subscription
+     */
+    public function useFeaturedCredit(): bool
+    {
+        $subscription = $this->activeSubscription;
+
+        if (!$subscription) {
+            return false;
+        }
+
+        return $subscription->useFeaturedCredit();
     }
 
     /**

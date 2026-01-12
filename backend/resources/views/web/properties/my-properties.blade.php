@@ -6,12 +6,18 @@
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <div class="flex justify-between items-center mb-8">
         <h1 class="text-3xl font-bold">{{ __('nav.my_properties') }}</h1>
-        <a href="{{ route('properties.create') }}" class="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-            </svg>
-            Add Property
-        </a>
+        @if($quotaInfo['can_create'])
+            <a href="{{ route('properties.create') }}" class="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                Add Property
+            </a>
+        @else
+            <a href="{{ route('subscription.index') }}" class="inline-flex items-center gap-2 px-6 py-3 bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition-colors">
+                ⚠️ Upgrade to Add More
+            </a>
+        @endif
     </div>
     
     @if(session('success'))
@@ -19,6 +25,44 @@
             {{ session('success') }}
         </div>
     @endif
+
+    @if(session('error'))
+        <div class="bg-red-50 text-red-700 p-4 rounded-xl mb-6">
+            {{ session('error') }}
+        </div>
+    @endif
+
+    <!-- Quota Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-xl shadow-sm border p-4 text-center">
+            <div class="text-2xl font-bold text-emerald-600">
+                {{ $quotaInfo['remaining'] === PHP_INT_MAX ? '∞' : $quotaInfo['remaining'] }}
+            </div>
+            <div class="text-gray-600 text-sm">Remaining Slots</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border p-4 text-center">
+            <div class="text-2xl font-bold text-gray-900">{{ $quotaInfo['used'] }}</div>
+            <div class="text-gray-600 text-sm">Active Listings</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border p-4 text-center">
+            <div class="text-2xl font-bold text-amber-600">{{ $quotaInfo['credits'] }}</div>
+            <div class="text-gray-600 text-sm">Listing Credits</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border p-4 text-center">
+            <div class="text-2xl font-bold text-purple-600">{{ $quotaInfo['featured_credits'] }}</div>
+            <div class="text-gray-600 text-sm">Featured Credits</div>
+        </div>
+    </div>
+
+    <!-- Quick Links -->
+    <div class="flex flex-wrap gap-3 mb-6">
+        <a href="{{ route('subscription.index') }}" class="px-4 py-2 bg-white border rounded-lg hover:bg-gray-50 text-sm font-medium">
+            💳 Subscription
+        </a>
+        <a href="{{ route('subscription.buy-credits') }}" class="px-4 py-2 bg-white border rounded-lg hover:bg-gray-50 text-sm font-medium">
+            📦 Buy Credits
+        </a>
+    </div>
     
     @if($properties->count() > 0)
         <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
@@ -28,8 +72,8 @@
                         <th class="px-6 py-4 text-left text-sm font-semibold text-gray-600">Property</th>
                         <th class="px-6 py-4 text-left text-sm font-semibold text-gray-600">Price</th>
                         <th class="px-6 py-4 text-left text-sm font-semibold text-gray-600">Status</th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-600">Boost</th>
                         <th class="px-6 py-4 text-left text-sm font-semibold text-gray-600">Views</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-600">Posted</th>
                         <th class="px-6 py-4 text-left text-sm font-semibold text-gray-600">Actions</th>
                     </tr>
                 </thead>
@@ -68,11 +112,26 @@
                                         @break
                                 @endswitch
                             </td>
+                            <td class="px-6 py-4">
+                                @if($property->activeBoost)
+                                    @php
+                                        $badge = $property->boostBadge;
+                                    @endphp
+                                    <span class="px-2 py-1 text-xs font-bold rounded-full {{ $badge['class'] ?? 'bg-emerald-100 text-emerald-700' }}">
+                                        {{ $badge['label'] ?? 'Featured' }}
+                                    </span>
+                                    <br>
+                                    <span class="text-xs text-gray-500">{{ $property->activeBoost->daysRemaining() }}d left</span>
+                                @elseif($property->status === 'active')
+                                    <a href="{{ route('subscription.boost', $property) }}" class="px-3 py-1 bg-purple-100 text-purple-700 text-sm font-medium rounded-full hover:bg-purple-200 transition">
+                                        🚀 Boost
+                                    </a>
+                                @else
+                                    <span class="text-gray-400 text-sm">—</span>
+                                @endif
+                            </td>
                             <td class="px-6 py-4 text-gray-600">
                                 {{ number_format($property->view_count) }}
-                            </td>
-                            <td class="px-6 py-4 text-gray-500 text-sm">
-                                {{ $property->created_at->format('M d, Y') }}
                             </td>
                             <td class="px-6 py-4">
                                 <div class="flex items-center gap-2">
@@ -107,12 +166,18 @@
             </div>
             <h2 class="text-xl font-bold text-gray-900 mb-2">No properties yet</h2>
             <p class="text-gray-500 mb-6">Start by adding your first property listing.</p>
-            <a href="{{ route('properties.create') }}" class="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                </svg>
-                Add Your First Property
-            </a>
+            @if($quotaInfo['can_create'])
+                <a href="{{ route('properties.create') }}" class="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Add Your First Property
+                </a>
+            @else
+                <a href="{{ route('subscription.index') }}" class="inline-flex items-center gap-2 px-6 py-3 bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition-colors">
+                    ⚠️ Upgrade Plan to Add Properties
+                </a>
+            @endif
         </div>
     @endif
 </div>

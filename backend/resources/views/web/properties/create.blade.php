@@ -153,41 +153,23 @@
                 <h2 class="text-xl font-bold mb-4">Property Features</h2>
 
                 @php
-                    $availableFeatures = [
-                        'Swimming Pool',
-                        'Garden',
-                        'Garage',
-                        'Security',
-                        'Gym',
-                        'Central AC',
-                        'Elevator',
-                        'Maid Room',
-                        'Driver Room',
-                        'Storage',
-                        'Balcony',
-                        'Private Pool',
-                        'Covered Parking',
-                        'Smart Home',
-                        'Furnished',
-                        'Pet Friendly',
-                        'Built-in Kitchen',
-                        'Walk-in Closet',
-                        'Study Room',
-                        'Basement'
-                    ];
                     $selectedFeatures = old('features', $property->features ?? []) ?: [];
                 @endphp
 
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    @foreach($availableFeatures as $feature)
+                    @foreach($features as $feature)
                         <label
                             class="flex items-center gap-2 p-3 border border-gray-200 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
-                            <input type="checkbox" name="features[]" value="{{ $feature }}" {{ in_array($feature, $selectedFeatures) ? 'checked' : '' }}
+                            <input type="checkbox" name="features[]" value="{{ $feature->name_en }}" {{ in_array($feature->name_en, $selectedFeatures) ? 'checked' : '' }}
                                 class="w-5 h-5 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500">
-                            <span class="text-sm">{{ $feature }}</span>
+                            <span class="text-sm">{{ $feature->icon }} {{ $feature->name }}</span>
                         </label>
                     @endforeach
                 </div>
+
+                @if($features->isEmpty())
+                    <p class="text-gray-500 text-center py-4">No features available. Admin needs to add features first.</p>
+                @endif
             </div>
 
             <!-- Property Specs -->
@@ -319,181 +301,181 @@
     @push('scripts')
         <script>
             // Store all selected files
-                    let selectedFiles = [];
+            let selectedFiles = [];
 
-                    function handleImageSelect(input) {
-                        const newFiles = Array.from(input.files);
+            function handleImageSelect(input) {
+                const newFiles = Array.from(input.files);
 
-                        // Add new files to array (avoid duplicates by name)
-                        newFiles.forEach(file => {
-                            const exists = selectedFiles.some(f => f.name === file.name && f.size === file.size);
-                            if (!exists) {
-                                selectedFiles.push(file);
-                            }
-                        });
-
-                        updateImagePreview();
-                        updateFileInput();
+                // Add new files to array (avoid duplicates by name)
+                newFiles.forEach(file => {
+                    const exists = selectedFiles.some(f => f.name === file.name && f.size === file.size);
+                    if (!exists) {
+                        selectedFiles.push(file);
                     }
+                });
 
-                    function updateImagePreview() {
-                        const preview = document.getElementById('image_preview');
-                        const countDiv = document.getElementById('image_count');
-                        const addMoreBtn = document.getElementById('add-more-btn');
-                        const uploadArea = document.getElementById('upload-area');
+                updateImagePreview();
+                updateFileInput();
+            }
 
-                        preview.innerHTML = '';
+            function updateImagePreview() {
+                const preview = document.getElementById('image_preview');
+                const countDiv = document.getElementById('image_count');
+                const addMoreBtn = document.getElementById('add-more-btn');
+                const uploadArea = document.getElementById('upload-area');
 
-                        if (selectedFiles.length > 0) {
-                            countDiv.classList.remove('hidden');
-                            countDiv.textContent = `${selectedFiles.length} image${selectedFiles.length > 1 ? 's' : ''} selected`;
-                            addMoreBtn.classList.remove('hidden');
-                            uploadArea.classList.add('hidden');
-                        } else {
-                            countDiv.classList.add('hidden');
-                            addMoreBtn.classList.add('hidden');
-                            uploadArea.classList.remove('hidden');
-                        }
+                preview.innerHTML = '';
 
-                        selectedFiles.forEach((file, index) => {
-                            const reader = new FileReader();
-                            reader.onload = function(e) {
-                                const div = document.createElement('div');
-                                div.className = 'relative aspect-video rounded-xl overflow-hidden shadow-md group';
-                                div.innerHTML = `
-                                    <img src="${e.target.result}" class="w-full h-full object-cover">
-                                    ${index === 0 ? '<span class="absolute top-2 left-2 bg-emerald-500 text-white text-xs px-2 py-1 rounded-full font-medium">Primary</span>' : ''}
-                                    <button type="button" onclick="removeImage(${index})" 
-                                        class="absolute top-2 right-2 w-8 h-8 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
-                                        ✕
-                                    </button>
-                                    <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
-                                        <p class="text-white text-xs truncate">${file.name}</p>
-                                    </div>
-                                `;
-                                preview.appendChild(div);
-                            };
-                            reader.readAsDataURL(file);
-                        });
-                    }
+                if (selectedFiles.length > 0) {
+                    countDiv.classList.remove('hidden');
+                    countDiv.textContent = `${selectedFiles.length} image${selectedFiles.length > 1 ? 's' : ''} selected`;
+                    addMoreBtn.classList.remove('hidden');
+                    uploadArea.classList.add('hidden');
+                } else {
+                    countDiv.classList.add('hidden');
+                    addMoreBtn.classList.add('hidden');
+                    uploadArea.classList.remove('hidden');
+                }
 
-                    function removeImage(index) {
-                        selectedFiles.splice(index, 1);
-                        updateImagePreview();
-                        updateFileInput();
-                    }
+                selectedFiles.forEach((file, index) => {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        const div = document.createElement('div');
+                        div.className = 'relative aspect-video rounded-xl overflow-hidden shadow-md group';
+                        div.innerHTML = `
+                                            <img src="${e.target.result}" class="w-full h-full object-cover">
+                                            ${index === 0 ? '<span class="absolute top-2 left-2 bg-emerald-500 text-white text-xs px-2 py-1 rounded-full font-medium">Primary</span>' : ''}
+                                            <button type="button" onclick="removeImage(${index})" 
+                                                class="absolute top-2 right-2 w-8 h-8 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
+                                                ✕
+                                            </button>
+                                            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
+                                                <p class="text-white text-xs truncate">${file.name}</p>
+                                            </div>
+                                        `;
+                        preview.appendChild(div);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
 
-                    function updateFileInput() {
-                        const input = document.getElementById('images');
-                        const dataTransfer = new DataTransfer();
+            function removeImage(index) {
+                selectedFiles.splice(index, 1);
+                updateImagePreview();
+                updateFileInput();
+            }
 
-                        selectedFiles.forEach(file => {
-                            dataTransfer.items.add(file);
-                        });
+            function updateFileInput() {
+                const input = document.getElementById('images');
+                const dataTransfer = new DataTransfer();
 
-                        input.files = dataTransfer.files;
-                    }
+                selectedFiles.forEach(file => {
+                    dataTransfer.items.add(file);
+                });
 
-                    // Load districts when city is selected and initialize map
-                    document.addEventListener('DOMContentLoaded', function () {
-                        const citySelect = document.getElementById('city_id');
-                        const districtSelect = document.getElementById('district_id');
-                        const currentDistrictId = '{{ old('district_id', $property->district_id ?? '') }}';
+                input.files = dataTransfer.files;
+            }
 
-                        citySelect.addEventListener('change', function () {
-                            loadDistricts(this.value);
-                        });
+            // Load districts when city is selected and initialize map
+            document.addEventListener('DOMContentLoaded', function () {
+                const citySelect = document.getElementById('city_id');
+                const districtSelect = document.getElementById('district_id');
+                const currentDistrictId = '{{ old('district_id', $property->district_id ?? '') }}';
 
-                        // Load districts for initially selected city (for edit mode)
-                        if (citySelect.value) {
-                            loadDistricts(citySelect.value, currentDistrictId);
-                        }
+                citySelect.addEventListener('change', function () {
+                    loadDistricts(this.value);
+                });
 
-                        function loadDistricts(cityId, selectedDistrictId = null) {
+                // Load districts for initially selected city (for edit mode)
+                if (citySelect.value) {
+                    loadDistricts(citySelect.value, currentDistrictId);
+                }
+
+                function loadDistricts(cityId, selectedDistrictId = null) {
+                    districtSelect.innerHTML = '<option value="">Select District</option>';
+
+                    if (!cityId) return;
+
+                    districtSelect.innerHTML = '<option value="">Loading...</option>';
+                    districtSelect.disabled = true;
+
+                    fetch(`/api/cities/${cityId}/districts`)
+                        .then(response => response.json())
+                        .then(data => {
                             districtSelect.innerHTML = '<option value="">Select District</option>';
 
-                            if (!cityId) return;
+                            const districts = data.data || data;
+                            districts.forEach(district => {
+                                const option = document.createElement('option');
+                                option.value = district.id;
+                                option.textContent = district.name || district.name_en;
+                                if (selectedDistrictId && district.id == selectedDistrictId) {
+                                    option.selected = true;
+                                }
+                                districtSelect.appendChild(option);
+                            });
+                        })
+                        .catch(error => {
+                            console.error('Error loading districts:', error);
+                            districtSelect.innerHTML = '<option value="">Failed to load districts</option>';
+                        })
+                        .finally(() => {
+                            districtSelect.disabled = false;
+                        });
+                }
 
-                            districtSelect.innerHTML = '<option value="">Loading...</option>';
-                            districtSelect.disabled = true;
+                // Initialize map for location picker
+                const latInput = document.getElementById('latitude');
+                const lngInput = document.getElementById('longitude');
 
-                            fetch(`/api/cities/${cityId}/districts`)
-                                .then(response => response.json())
-                                .then(data => {
-                                    districtSelect.innerHTML = '<option value="">Select District</option>';
+                // Default to Riyadh center
+                let lat = parseFloat(latInput.value) || 24.7136;
+                let lng = parseFloat(lngInput.value) || 46.6753;
 
-                                    const districts = data.data || data;
-                                    districts.forEach(district => {
-                                        const option = document.createElement('option');
-                                        option.value = district.id;
-                                        option.textContent = district.name || district.name_en;
-                                        if (selectedDistrictId && district.id == selectedDistrictId) {
-                                            option.selected = true;
-                                        }
-                                        districtSelect.appendChild(option);
-                                    });
-                                })
-                                .catch(error => {
-                                    console.error('Error loading districts:', error);
-                                    districtSelect.innerHTML = '<option value="">Failed to load districts</option>';
-                                })
-                                .finally(() => {
-                                    districtSelect.disabled = false;
-                                });
-                        }
+                const map = L.map('location-map').setView([lat, lng], 12);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap'
+                }).addTo(map);
 
-                        // Initialize map for location picker
-                        const latInput = document.getElementById('latitude');
-                        const lngInput = document.getElementById('longitude');
+                let marker = null;
 
-                        // Default to Riyadh center
-                        let lat = parseFloat(latInput.value) || 24.7136;
-                        let lng = parseFloat(lngInput.value) || 46.6753;
+                // If there are existing coordinates, show marker
+                if (latInput.value && lngInput.value) {
+                    marker = L.marker([lat, lng]).addTo(map);
+                }
 
-                        const map = L.map('location-map').setView([lat, lng], 12);
-                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                            attribution: '© OpenStreetMap'
-                        }).addTo(map);
+                // Click on map to set location
+                map.on('click', function (e) {
+                    const { lat, lng } = e.latlng;
 
-                        let marker = null;
+                    latInput.value = lat.toFixed(8);
+                    lngInput.value = lng.toFixed(8);
 
-                        // If there are existing coordinates, show marker
-                        if (latInput.value && lngInput.value) {
+                    if (marker) {
+                        marker.setLatLng(e.latlng);
+                    } else {
+                        marker = L.marker(e.latlng).addTo(map);
+                    }
+                });
+
+                // Update marker when inputs change manually
+                function updateMarkerFromInputs() {
+                    const lat = parseFloat(latInput.value);
+                    const lng = parseFloat(lngInput.value);
+
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        if (marker) {
+                            marker.setLatLng([lat, lng]);
+                        } else {
                             marker = L.marker([lat, lng]).addTo(map);
                         }
+                        map.setView([lat, lng], 15);
+                    }
+                }
 
-                        // Click on map to set location
-                        map.on('click', function(e) {
-                            const { lat, lng } = e.latlng;
-
-                            latInput.value = lat.toFixed(8);
-                            lngInput.value = lng.toFixed(8);
-
-                            if (marker) {
-                                marker.setLatLng(e.latlng);
-                            } else {
-                                marker = L.marker(e.latlng).addTo(map);
-                            }
-                        });
-
-                        // Update marker when inputs change manually
-                        function updateMarkerFromInputs() {
-                            const lat = parseFloat(latInput.value);
-                            const lng = parseFloat(lngInput.value);
-
-                            if (!isNaN(lat) && !isNaN(lng)) {
-                                if (marker) {
-                                    marker.setLatLng([lat, lng]);
-                                } else {
-                                    marker = L.marker([lat, lng]).addTo(map);
-                                }
-                                map.setView([lat, lng], 15);
-                            }
-                        }
-
-                        latInput.addEventListener('change', updateMarkerFromInputs);
-                        lngInput.addEventListener('change', updateMarkerFromInputs);
-                    });
-                </script>
+                latInput.addEventListener('change', updateMarkerFromInputs);
+                lngInput.addEventListener('change', updateMarkerFromInputs);
+            });
+        </script>
     @endpush
 @endsection
