@@ -223,15 +223,16 @@ class Property extends Model
                 ->where('property_boosts.ends_at', '>=', now());
         })
             ->select('properties.*')
-            ->orderByRaw("
-            CASE 
-                WHEN property_boosts.boost_type = 'premium' THEN 3
-                WHEN property_boosts.boost_type = 'top_pick' THEN 2
-                WHEN property_boosts.boost_type = 'featured' THEN 1
-                ELSE 0
-            END DESC
-        ")
-            ->groupBy('properties.id');
+            ->selectRaw("
+                MAX(CASE 
+                    WHEN property_boosts.boost_type = 'premium' THEN 3
+                    WHEN property_boosts.boost_type = 'top_pick' THEN 2
+                    WHEN property_boosts.boost_type = 'featured' THEN 1
+                    ELSE 0
+                END) as boost_priority
+            ")
+            ->groupBy('properties.id')
+            ->orderByDesc('boost_priority');
     }
 
     /**
